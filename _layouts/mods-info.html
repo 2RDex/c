@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Content</title>
+    <link rel="stylesheet" href="{{ '/assets/css/2rd_menu.css' | prepend: site.baseurl }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <style>
+        .menu-link.ro-bear {
+            color: #fff;
+            background-color: #a70b0b;
+        }
+
+        .menu-link.ro-bear:hover {
+            background-color: #7e0f0f;
+        }
+    </style>
+</head>
+
+<body>
+    <ul class="tree-menu">
+        <!--<li class="menu-item expanded">
+            <a href="http://thenerdgamer.servegame.com" class="menu-link ro-bear" target="_top"><i
+                    class="fa-solid fa-rectangle-ad"></i> Ragnarok BEAR BEAR</a>
+        </li>-->
+        <li class="menu-item expanded">
+            <a href="{{site.url}}/mods" class="menu-link category-link" style="color: #942626;" target="_top"><i
+                    class="fa-solid fa-file-arrow-down"></i> โหลดม็อดภาษาไทย</a>
+            <ul class="submenu">
+                <li class="menu-item">
+                    <div class="menu-row">
+                        <a href="{{site.url}}/download/RLCraft_THLanguage_0.4.mcpack" class="menu-link" target="_blank">
+                            <i class="fa-solid fa-arrow-right"></i> RLCraft v0.4
+                        </a>
+                        <a href="https://youtu.be/4zu2mah2Lh0" class="small-btn" target="_blank"
+                            title="เล่นคลิป">
+                            <i class="fa-brands fa-youtube"></i>
+                        </a>
+                    </div>
+                </li>
+                <li class="menu-item">
+                    <div class="menu-row">
+                        <a href="{{site.url}}/download/BoB_THLanguage_0.1.mcpack" class="menu-link" target="_blank">
+                            <i class="fa-solid fa-arrow-right"></i> Better on Bedrock v0.1
+                        </a>
+                        <a href="https://youtu.be/_rK01pqg6VQ" class="small-btn" target="_blank"
+                            title="เล่นคลิป">
+                            <i class="fa-brands fa-youtube"></i>
+                        </a>
+                    </div>
+                </li>
+                <li class="menu-item">
+                    <div class="menu-row">
+                        <a href="{{site.url}}/download/RealismCraft_THLanguage_0.1.mcpack" class="menu-link" target="_blank">
+                            <i class="fa-solid fa-arrow-right"></i> RealismCraft v0.1
+                        </a>
+                        <a href="https://youtu.be/Ur8O6V3Vv14" class="small-btn" target="_blank"
+                            title="เล่นคลิป">
+                            <i class="fa-brands fa-youtube"></i>
+                        </a>
+                    </div>
+                </li>
+                <li class="menu-item">
+                    <div class="menu-row">
+                        <a href="{{site.url}}/download/Superman_THLanguage_0.1.mcpack" class="menu-link" target="_blank">
+                            <i class="fa-solid fa-arrow-right"></i> Superman v0.1
+                        </a>
+                        <a href="https://youtu.be/nH0PJaoaAKE" class="small-btn" target="_blank"
+                            title="เล่นคลิป">
+                            <i class="fa-brands fa-youtube"></i>
+                        </a>
+                    </div>
+                </li>
+                <li class="menu-item">
+                    <a href="https://www.youtube.com/embed/HhJ7skYD1p0?si=LWDTEyfsbI77tayI" class="menu-link"
+                        style="color: #ff0000;"><i class="fa-brands fa-youtube"></i> วิธีเปิดใช้งานม็อด</a>
+                </li>
+            </ul>
+        </li>
+    </ul>
+    {% include footer.html %}
+</body>
+
+</html>
