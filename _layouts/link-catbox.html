@@ -77,10 +77,11 @@
     }
   }
 
+  // รองรับส่งเป็นทั้งโค้ด (kbe4kh) หรือเป็น URL เต็มของ catbox ก็ได้
   const code = (raw.match(/[a-zA-Z0-9]+/) || [''])[0];
   const safeExt = (ext.match(/[a-z0-9]+/) || [''])[0];
 
-  // bg color
+  // สีพื้นหลัง
   const bg = (qs.get('bg') || '').trim();
   if (bg) {
     const stage = document.getElementById('stage');
@@ -88,6 +89,8 @@
   }
 
   const startMode = (qs.get('mode') || 'contain').toLowerCase(); // contain|cover
+  const showUI = qs.get('ui') !== '0';
+  const customName = (qs.get('name') || '').trim();
 
   const stageEl = document.getElementById('stage');
   const hud = document.getElementById('hud');
@@ -109,16 +112,16 @@
           <ul>
             <li><code>/?code=1njba5&ext=png</code></li>
             <li><code>/?code=1njba5.png</code></li>
-            <li><code>/?code=kbe4kh&ext=mp4</code></li>
-            <li><code>/?code=kbe4kh.mp4</code></li>
+            <li><code>/?code=kbe4kh&ext=mp4&autoplay=1&loop=1&mute=1&t=30</code></li>
           </ul>
-          <p>ออปชัน: <code>&mode=contain|cover</code>, <code>&bg=%23000</code></p>
+          <p>ออปชัน: <code>&mode=contain|cover</code>, <code>&bg=%23000</code>, <code>&ui=0|1</code>, <code>&name=foo.png</code></p>
         </div>
       </div>`;
   }
 
   function toggleHud(force) {
     clearTimeout(showHudTimer);
+    if (!showUI) { hud.classList.remove('show'); return; }
     if (force === true) hud.classList.add('show');
     else if (force === false) hud.classList.remove('show');
     else hud.classList.toggle('show');
@@ -127,29 +130,58 @@
     }
   }
 
-  // ซูม/แพน (เฉพาะภาพ)
-  let zoom = 1, panX = 0, panY = 0, panning = false, lastX = 0, lastY = 0, mediaEl = null;
-  function applyTransform() { if (mediaEl && mediaEl.tagName === 'IMG') mediaEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`; }
-  function zoomBy(delta) { if (mediaEl?.tagName !== 'IMG') return; zoom = Math.min(8, Math.max(0.25, zoom * delta)); applyTransform(); }
-  function resetZoom() { if (mediaEl?.tagName !== 'IMG') return; zoom = 1; panX = 0; panY = 0; applyTransform(); }
+  // ซูม/แพน (เฉพาะภาพ) — รองรับ wheel, pointer drag และ pinch 2 นิ้ว
+  let zoom = 1, panX = 0, panY = 0, mediaEl = null;
+  const Z_MIN = 0.25, Z_MAX = 8, Z_STEP = 1.25;
+
+  function applyTransform() {
+    if (mediaEl && mediaEl.tagName === 'IMG') {
+      mediaEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+    }
+  }
+
+  function clampZoom(z) {
+    return Math.min(Z_MAX, Math.max(Z_MIN, z));
+  }
+
+  function zoomAt(factor, cx, cy) {
+    if (mediaEl?.tagName !== 'IMG') return;
+    const rect = mediaEl.getBoundingClientRect();
+    const ox = cx - (rect.left + rect.width/2) - panX;
+    const oy = cy - (rect.top  + rect.height/2) - panY;
+
+    const newZ = clampZoom(zoom * factor);
+    const k = newZ / zoom;
+    // คงจุดที่ชี้ (cx,cy) ให้คงตำแหน่งบนหน้าจอ
+    panX -= ox * (k - 1);
+    panY -= oy * (k - 1);
+    zoom = newZ;
+    applyTransform();
+  }
+
+  function resetZoom() { if (mediaEl?.tagName === 'IMG') { zoom = 1; panX = 0; panY = 0; applyTransform(); } }
 
   function setMode(mode) {
     if (mode === 'cover') { stageEl.classList.add('cover'); fitBtn.textContent = 'Cover'; }
     else { stageEl.classList.remove('cover'); fitBtn.textContent = 'Contain'; }
   }
 
-  function isImage(ext) { return imageExt.includes(ext); }
-  function isVideo(ext) { return videoExt.includes(ext); }
+  function isImage(e) { return imageExt.includes(e); }
+  function isVideo(e) { return videoExt.includes(e); }
 
   document.addEventListener('DOMContentLoaded', () => {
     if (!(code && safeExt)) return showHelp();
 
     const url = `https://files.catbox.moe/${code}.${safeExt}`;
-    nameEl.textContent = `${code}.${safeExt}`;
+    const displayName = customName || `${code}.${safeExt}`;
+
+    nameEl.textContent = displayName;
     openBtn.href = url;
     dlBtn.href = url;
-    dlBtn.download = `${code}.${safeExt}`;
+    dlBtn.download = displayName;
     setMode(startMode);
+
+    if (!showUI) hud.style.display = 'none';
 
     // เคลียร์เวที
     stageEl.innerHTML = '';
@@ -157,9 +189,10 @@
       const img = document.createElement('img');
       img.className = 'media zoomable';
       img.id = 'media';
-      img.alt = `${code}.${safeExt}`;
+      img.alt = displayName;
       img.src = url;
       img.referrerPolicy = 'no-referrer';
+      img.style.transformOrigin = 'center center';
       mediaEl = img;
       stageEl.appendChild(img);
 
@@ -167,27 +200,81 @@
         document.body.innerHTML = `<div class="help"><div><h1>โหลดภาพไม่สำเร็จ</h1><p><code>${url}</code></p></div></div>`;
       });
 
-      // Gesture: double click/tap -> toggle fit
-      img.addEventListener('dblclick', () => fitBtn.click());
+      // Double-click / double-tap
+      let lastTap = 0;
+      img.addEventListener('click', (e) => {
+        const now = performance.now();
+        if (now - lastTap < 300) {
+          // double tap
+          const nextZoom = (zoom < 1.01) ? Z_STEP : 1/ Z_STEP;
+          zoomAt(nextZoom, e.clientX, e.clientY);
+          lastTap = 0;
+        } else {
+          lastTap = now;
+        }
+      });
 
-      // Wheel zoom
+      // Wheel zoom (เดสก์ท็อป)
       stageEl.addEventListener('wheel', (e) => {
         e.preventDefault();
-        zoomBy(e.deltaY < 0 ? 1.15 : 1/1.15);
+        const factor = (e.deltaY < 0) ? Z_STEP : (1 / Z_STEP);
+        zoomAt(factor, e.clientX, e.clientY);
       }, { passive: false });
 
-      // Pan
+      // Pointer pan + pinch
+      const pts = new Map(); // id -> {x,y}
+      let lastDist = 0, lastCenter = null, panningOnly = false;
+      function getCenterAndDist() {
+        const arr = Array.from(pts.values());
+        if (arr.length < 2) return null;
+        const cx = (arr[0].x + arr[1].x)/2;
+        const cy = (arr[0].y + arr[1].y)/2;
+        const dx = arr[0].x - arr[1].x;
+        const dy = arr[0].y - arr[1].y;
+        return { cx, cy, dist: Math.hypot(dx, dy) };
+      }
+
       stageEl.addEventListener('pointerdown', (e) => {
-        panning = true; lastX = e.clientX; lastY = e.clientY;
         stageEl.setPointerCapture(e.pointerId);
+        pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        panningOnly = (pts.size === 1);
       });
+
       stageEl.addEventListener('pointermove', (e) => {
-        if (!panning) return;
-        panX += (e.clientX - lastX); panY += (e.clientY - lastY);
-        lastX = e.clientX; lastY = e.clientY; applyTransform();
+        const prev = pts.get(e.pointerId);
+        if (!prev) return;
+        pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (pts.size === 1 && panningOnly) {
+          panX += (e.clientX - prev.x);
+          panY += (e.clientY - prev.y);
+          applyTransform();
+        } else if (pts.size >= 2) {
+          const info = getCenterAndDist();
+          if (!info) return;
+          if (lastDist > 0) {
+            const factor = info.dist / lastDist;
+            zoomAt(factor, info.cx, info.cy);
+            // หลังซูมให้แพนตามการเลื่อนของจุดศูนย์กลาง
+            if (lastCenter) {
+              panX += (info.cx - lastCenter.cx);
+              panY += (info.cy - lastCenter.cy);
+              applyTransform();
+            }
+          }
+          lastDist = info.dist;
+          lastCenter = { cx: info.cx, cy: info.cy };
+        }
       });
-      stageEl.addEventListener('pointerup', () => { panning = false; });
-      stageEl.addEventListener('pointercancel', () => { panning = false; });
+
+      function endPointer(e) {
+        pts.delete(e.pointerId);
+        if (pts.size < 2) { lastDist = 0; lastCenter = null; }
+        if (pts.size === 0) panningOnly = false;
+      }
+      stageEl.addEventListener('pointerup', endPointer);
+      stageEl.addEventListener('pointercancel', endPointer);
+      stageEl.addEventListener('pointerleave', endPointer);
 
     } else if (isVideo(safeExt)) {
       const vid = document.createElement('video');
@@ -196,46 +283,73 @@
       vid.src = url;
       vid.controls = true;
       vid.playsInline = true; // มือถือไม่เด้งเต็มจอ
+
+      // พารามิเตอร์วิดีโอ
+      const autoplay = qs.get('autoplay') === '1';
+      const loop = qs.get('loop') === '1';
+      const muted = qs.get('mute') === '1';
+      const startAt = parseFloat(qs.get('t') || '0') || 0;
+      const poster = (qs.get('poster') || '').trim();
+
+      if (poster) vid.poster = poster;
+      vid.loop = loop;
+      vid.muted = muted;
+      if (autoplay && muted) vid.autoplay = true; // ส่วนใหญ่บราวเซอร์จะให้เล่นเองได้เมื่อ muted
+
       vid.preload = 'metadata';
       mediaEl = vid;
       stageEl.appendChild(vid);
+
+      vid.addEventListener('loadedmetadata', () => {
+        if (startAt > 0 && Number.isFinite(vid.duration)) {
+          vid.currentTime = Math.min(startAt, vid.duration - 0.25);
+        }
+      });
 
       vid.addEventListener('error', () => {
         document.body.innerHTML = `<div class="help"><div><h1>โหลดวิดีโอไม่สำเร็จ</h1><p><code>${url}</code></p></div></div>`;
       });
 
       // ดับเบิลคลิก/แตะสองครั้ง -> toggle fit (cover/contain)
-      vid.addEventListener('dblclick', () => fitBtn.click());
+      let lastTap = 0;
+      vid.addEventListener('click', () => {
+        const now = performance.now();
+        if (now - lastTap < 300) fitBtn.click();
+        lastTap = now;
+      });
 
     } else {
       document.body.innerHTML = `<div class="help"><div><h1>ไม่รองรับไฟล์ .${safeExt}</h1></div></div>`;
       return;
     }
 
-    // โชว์ HUD เมื่อขยับ/แตะ
-    ['mousemove','touchstart'].forEach(evt => document.addEventListener(evt, () => toggleHud(true)));
+    // โชว์ HUD เมื่อขยับ/แตะ (เว้นถ้า ui=0)
+    if (showUI) {
+      ['mousemove','touchstart'].forEach(evt => document.addEventListener(evt, () => toggleHud(true)));
+    }
 
     // ปุ่ม HUD
     fitBtn.addEventListener('click', () => {
       const isCover = stageEl.classList.contains('cover');
       setMode(isCover ? 'contain' : 'cover');
     });
-    document.getElementById('zoomIn').addEventListener('click', () => zoomBy(1.25));
-    document.getElementById('zoomOut').addEventListener('click', () => zoomBy(1/1.25));
+    document.getElementById('zoomIn').addEventListener('click', (e) => {
+      if (mediaEl?.tagName === 'IMG') zoomAt(1.25, innerWidth/2, innerHeight/2);
+    });
+    document.getElementById('zoomOut').addEventListener('click', (e) => {
+      if (mediaEl?.tagName === 'IMG') zoomAt(1/1.25, innerWidth/2, innerHeight/2);
+    });
     document.getElementById('zoomReset').addEventListener('click', resetZoom);
 
     // คีย์ลัดทั่วไป
     document.addEventListener('keydown', (e) => {
-      // สลับ fit
       if (e.key === 'f' || e.key === 'F') fitBtn.click();
-      // ภาพ: ซูม
+      if (e.key === 'h' || e.key === 'H') toggleHud();
       if (mediaEl?.tagName === 'IMG') {
-        if (e.key === '+' || e.key === '=') zoomBy(1.25);
-        if (e.key === '-' || e.key === '_') zoomBy(1/1.25);
+        if (e.key === '+' || e.key === '=') zoomAt(1.25, innerWidth/2, innerHeight/2);
+        if (e.key === '-' || e.key === '_') zoomAt(1/1.25, innerWidth/2, innerHeight/2);
         if (e.key === '0') resetZoom();
-        if (e.key === 'h' || e.key === 'H') toggleHud();
       }
-      // วิดีโอ: คุม playback
       if (mediaEl?.tagName === 'VIDEO') {
         const v = mediaEl;
         if (e.code === 'Space' || e.key.toLowerCase() === 'k') { e.preventDefault(); v.paused ? v.play() : v.pause(); }
@@ -252,6 +366,7 @@
   });
 })();
 </script>
+
 
 </body>
 </html>
