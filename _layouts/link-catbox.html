@@ -44,6 +44,36 @@
 
   .help { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; color: #ddd; background: #0b0b0b; }
   .help code { background: #121212; padding: 2px 6px; border-radius: 6px; }
+
+  .shop-window-container {
+    width: 700px;
+    height: 550px;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    box-sizing: border-box;
+}
+    input,
+    button {
+      padding: 10px;
+      font-size: 1rem;
+      margin-top: .5rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    button {
+      cursor: pointer;
+      margin-top: 1rem;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
 </style>
 </head>
 <body>
@@ -115,6 +145,8 @@
             <li><code>/?code=kbe4kh&ext=mp4&autoplay=1&loop=1&mute=1&t=30</code></li>
           </ul>
           <p>ออปชัน: <code>&mode=contain|cover</code>, <code>&bg=%23000</code>, <code>&ui=0|1</code>, <code>&name=foo.png</code></p>
+          <!--<iframe id="menuFrame" src="/link-info" frameborder="0" scrolling="auto"></iframe>-->
+          <a href="/link" rel="noopener noreferrer" class="no-underline"><button id="makeBtn" type="button">สร้างลิงก์</button></a>
         </div>
       </div>`;
   }
