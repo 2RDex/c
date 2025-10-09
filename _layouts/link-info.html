@@ -98,12 +98,17 @@
       word-break: break-all;
     }
 
-    .copy-btn {
-      padding: 6px 10px;
-      font-size: .9rem;
+    .copy-text {
+      color: #007bff;
       cursor: pointer;
-      border: 1px solid #ddd;
-      border-radius: 6px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .copy-text:hover {
+      color: #0056b3;
+      text-decoration: underline;
     }
 
     .note {
@@ -146,8 +151,7 @@
         <a href="https://catbox.moe/" target="_blank" rel="noopener noreferrer" class="no-underline">Catbox</a>
         เช่น <code>https://files.catbox.moe/XXXXX.png</code>
       </li>
-      <input id="inputUrl" type="text" placeholder="วางลิงก์"
-        autofocus>
+      <input id="inputUrl" type="text" placeholder="วางลิงก์" autofocus>
       <div class="actions">
         <button id="makeBtn" type="button">สร้างลิงก์</button>
         <button id="clearBtn" type="button" aria-label="ล้าง">ล้าง</button>
@@ -194,8 +198,9 @@
         const ext = mCat[2].toLowerCase();
         //const shortUrl = `${base}/c/?code=${encodeURIComponent(code)}&ext=${encodeURIComponent(ext)}`;
         const shortUrl = `${base}/?code=${encodeURIComponent(code)}.${encodeURIComponent(ext)}`;
+        const shortUrl2 = `${base}/v/?code=${encodeURIComponent(code)}.${encodeURIComponent(ext)}`;
         htmlOut += renderLine('Catbox', shortUrl);
-
+        htmlOut += renderLine('View', shortUrl2);
       }
 
       if (!htmlOut) {
@@ -211,11 +216,11 @@
     function renderLine(label, url) {
       const safe = url.replace(/"/g, '&quot;');
       return `
-      <div class="link-box">
-        <strong>${label}:</strong>
-        <a href="${safe}" target="_blank" rel="noopener">${safe}</a>
-        <button class="copy-btn" type="button" onclick="copyToClipboard('${safe}')">คัดลอก</button>
-      </div>`;
+    <div class="link-box">
+      <strong>${label}:</strong>
+      <a href="${safe}" target="_blank" rel="noopener">${safe}</a>
+      <span class="copy-text" onclick="copyToClipboard('${safe}')">[คัดลอก]</span>
+    </div>`;
     }
 
     function copyToClipboard(text) {
