@@ -213,33 +213,33 @@
       result.style.display = 'block';
     }
 
-    function renderLine(label, url) {
-      const safe = url.replace(/"/g, '&quot;');
-      return `
+function renderLine(label, url) {
+  const safe = url.replace(/"/g, '&quot;');
+  return `
     <div class="link-box">
       <strong>${label}:</strong>
       <a href="${safe}" target="_blank" rel="noopener">${safe}</a>
-      <span class="copy-text" onclick="copyToClipboard('${safe}')">[คัดลอก]</span>
+      <span class="copy-text" data-original="[คัดลอก]" onclick="copyToClipboard('${safe}', this)">[คัดลอก]</span>
     </div>`;
-    }
+}
 
-    function copyToClipboard(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        // แจ้งเตือนแบบเงียบ ๆ
-        const btn = document.activeElement;
-        if (btn && btn.classList.contains('copy-btn')) {
-          const old = btn.textContent;
-          btn.textContent = 'คัดลอกแล้ว ✓';
-          btn.disabled = true;
-          setTimeout(() => { btn.textContent = old; btn.disabled = false; }, 1200);
-        } else {
-          alert('คัดลอกลิงก์เรียบร้อยแล้ว ✅');
-        }
-      }).catch(err => {
-        console.error('Copy failed:', err);
-        alert('คัดลอกไม่สำเร็จ ลองอีกครั้งครับ');
-      });
+
+    function copyToClipboard(text, el) {
+  navigator.clipboard.writeText(text).then(() => {
+    if (el) {
+      el.textContent = '[คัดลอกแล้ว ✓]';
+      el.style.color = '#28a745'; // เขียวเล็กน้อย
+      setTimeout(() => {
+        el.textContent = el.dataset.original;
+        el.style.color = ''; // กลับเป็นสีปกติ
+      }, 1200);
     }
+  }).catch(err => {
+    console.error('Copy failed:', err);
+    alert('คัดลอกไม่สำเร็จ ลองอีกครั้งครับ');
+  });
+}
+
   </script>
 </body>
 
